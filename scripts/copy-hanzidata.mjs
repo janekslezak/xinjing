@@ -26,7 +26,7 @@ for (const m of zhStrings) {
   }
 }
 // variant fallback targets (must exist even when the source char does not)
-const VARIANT_FALLBACK = { "經": "掛" };
+const VARIANT_FALLBACK = { "罣": "掛" };
 for (const target of Object.values(VARIANT_FALLBACK)) unique.add(target);
 
 const dataDir = path.join(root, "node_modules/hanzi-writer-data");

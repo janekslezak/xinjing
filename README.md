@@ -9,7 +9,7 @@ A standalone PWA for copying and chanting the **Heart Sutra** (般若波羅蜜�
 - **Copy 臨摹** — watch every stroke and copy each of the 268 characters by hand:
   step through the whole sutra in reading order with animated stroke order
   (hanzi-writer), a toggleable 田字格 practice grid and character outline, plus
-  the source line for context. Stroke data for 經 is shown via its variant 掛.
+  the source line for context. Stroke data for 罣 is shown via its variant 掛.
 - **Chant 誦讀** — full-text chant-along playback (Web Speech API, zh-TW voice
   preferred) with speed control (0.5×–1.25×), loop mode, and per-line listen
   buttons. The active line is highlighted as the chant advances.
