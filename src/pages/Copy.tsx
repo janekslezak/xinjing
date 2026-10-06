@@ -133,6 +133,8 @@ export default function Copy() {
   const [fallbackNote, setFallbackNote] = useState<string | null>(null);
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [jumpEditing, setJumpEditing] = useState(false);
+  const [jumpValue, setJumpValue] = useState("");
   const [viewed, setViewed] = useState<Set<string>>(() => readCharSet(VIEWED_KEY));
   const [mastered, setMastered] = useState<Set<string>>(() => readCharSet(MASTERED_KEY));
   const [toast, setToast] = useState<string | null>(null);
@@ -143,6 +145,7 @@ export default function Copy() {
 
   const writerRef = useRef<HanziWriter | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
+  const jumpCancelRef = useRef(false);
   const modeRef = useRef(mode);
   modeRef.current = mode;
 
@@ -310,20 +313,21 @@ export default function Copy() {
   );
 
   // keyboard navigation — arrows are disabled while the jump sheet (modal)
-  // is open; Escape closes the sheet
+  // is open or the jump-to-character input is being edited (its ArrowLeft/
+  // ArrowRight belong to the input); Escape closes the sheet
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         if (sheetOpen) setSheetOpen(false);
         return;
       }
-      if (sheetOpen) return;
+      if (sheetOpen || jumpEditing) return;
       if (e.key === "ArrowLeft") go(-1);
       else if (e.key === "ArrowRight") go(1);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [go, sheetOpen]);
+  }, [go, sheetOpen, jumpEditing]);
 
   const retry = () => {
     const w = writerRef.current;
@@ -357,6 +361,26 @@ export default function Copy() {
     setSheetOpen(false);
   };
 
+  // manual jump-to-character: open the inline input prefilled with the
+  // current position; commit on Enter/blur, cancel on Escape/empty/invalid
+  const openJump = () => {
+    jumpCancelRef.current = false;
+    setJumpValue(String(index + 1));
+    setJumpEditing(true);
+  };
+
+  const commitJump = () => {
+    setJumpEditing(false);
+    if (jumpCancelRef.current) {
+      jumpCancelRef.current = false;
+      return;
+    }
+    const n = Number.parseInt(jumpValue, 10);
+    if (!Number.isFinite(n)) return;
+    // same index setter as normal navigation → persists + marks viewed
+    setIndex(clampIndex(n - 1));
+  };
+
   const contextZh = lineIndex === -1 ? SUTRA_TITLE_ZH : SUTRA_LINES[lineIndex].zh;
   const contextEn = lineIndex === -1 ? SUTRA_TITLE_EN : SUTRA_LINES[lineIndex].en;
 
@@ -370,9 +394,44 @@ export default function Copy() {
       <div>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1">
-            <p className="font-display text-[15px] font-bold text-ink">
-              {index + 1} <span className="text-ink-faint">/ {TOTAL_CHARS}</span>
-            </p>
+            {jumpEditing ? (
+              <span className="flex items-baseline gap-1 font-display text-[15px] font-bold text-ink">
+                <input
+                  ref={(el) => {
+                    if (el) {
+                      el.focus();
+                      el.select();
+                    }
+                  }}
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  aria-label="Jump to character number"
+                  value={jumpValue}
+                  onChange={(e) => setJumpValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.currentTarget.blur();
+                    } else if (e.key === "Escape") {
+                      jumpCancelRef.current = true;
+                      e.currentTarget.blur();
+                    }
+                  }}
+                  onBlur={commitJump}
+                  className="w-16 rounded-md border-b-2 border-vermilion bg-transparent text-center font-display text-[15px] font-bold text-ink outline-none"
+                />
+                <span className="text-ink-faint">/ {TOTAL_CHARS}</span>
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={openJump}
+                aria-label="Jump to character number"
+                className="-mx-1 rounded-md px-1 font-display text-[15px] font-bold text-ink transition-all hover:bg-ink/5 active:scale-95"
+              >
+                {index + 1} <span className="text-ink-faint">/ {TOTAL_CHARS}</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={pronounce}

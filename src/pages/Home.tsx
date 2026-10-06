@@ -3,12 +3,7 @@ import { Link } from "react-router";
 import { motion } from "framer-motion";
 import { Brush, AudioLines, ChevronRight } from "lucide-react";
 import ProgressRing from "@/components/ProgressRing";
-import {
-  SUTRA_LINES,
-  SUTRA_ATTRIBUTION_ZH,
-  TOTAL_CHARS,
-  UNIQUE_CHARS,
-} from "@/data/sutra";
+import { SUTRA_ATTRIBUTION_ZH, UNIQUE_CHARS } from "@/data/sutra";
 
 const EASE = [0.22, 1, 0.36, 1] as [number, number, number, number];
 
@@ -23,14 +18,6 @@ function readCharSet(key: string): Set<string> {
   } catch {
     return new Set();
   }
-}
-
-function StatChip({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="rounded-full border border-grid-line/70 bg-paper-raised px-3.5 py-1.5 text-[12px] font-bold text-ink-soft shadow-xs">
-      {children}
-    </span>
-  );
 }
 
 export default function Home() {
@@ -53,25 +40,16 @@ export default function Home() {
 
   return (
     <div className="flex flex-col gap-5 pt-6">
-      {/* hero */}
+      {/* intro tagline */}
       <motion.section
         initial={{ y: 16, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.35, ease: EASE }}
-        className="flex flex-col items-center pb-2 pt-14 text-center"
+        className="text-center"
       >
-        <h1 className="mt-4 flex items-baseline gap-2 font-display text-[34px] font-bold leading-none text-ink">
-          Xinjing
-          <span className="font-brush text-[26px] font-normal text-vermilion">心經</span>
-        </h1>
-        <p className="mt-2.5 max-w-[300px] text-[14px] leading-relaxed text-ink-soft">
+        <p className="mx-auto max-w-[300px] text-[14px] leading-relaxed text-ink-soft">
           Practice tool to learn and write the Heart Sutra
         </p>
-        <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
-          <StatChip>{TOTAL_CHARS} characters</StatChip>
-          <StatChip>{SUTRA_LINES.length} lines</StatChip>
-          <StatChip>Xuanzang translation</StatChip>
-        </div>
       </motion.section>
 
       {/* progress card */}

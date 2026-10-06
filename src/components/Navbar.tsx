@@ -5,13 +5,14 @@ import SealLogo from "./SealLogo";
 import { useAppSettings, updateSettings } from "@/components/settings/settings";
 
 const TITLES: Array<[RegExp, string]> = [
+  [/^\/$/, "Home"],
   [/^\/copy/, "Copy"],
   [/^\/recite/, "Recite"],
 ];
 
-function titleFor(pathname: string): string {
+function pageFor(pathname: string): string | null {
   for (const [re, t] of TITLES) if (re.test(pathname)) return t;
-  return "Xinjing";
+  return null;
 }
 
 function systemPrefersDark(): boolean {
@@ -59,33 +60,32 @@ function ThemeToggle() {
 /** TOP APP BAR — 56px + safe-area-top, blurred paper bg, sticky in normal flow. */
 export default function Navbar() {
   const { pathname } = useLocation();
-  const isHome = pathname === "/";
+  const page = pageFor(pathname);
 
   return (
     <header className="sticky top-0 z-50 border-b border-grid-line/50 bg-paper/85 pt-safe backdrop-blur-md">
       <div className="mx-auto flex h-14 w-full max-w-[480px] items-center justify-between px-5">
-        {isHome ? (
-          <div className="flex items-center gap-2.5">
-            <motion.div
-              initial={{ scale: 1.6, rotate: -8 }}
-              animate={{ scale: 1, rotate: -3 }}
-              transition={{ type: "spring", stiffness: 300, damping: 18 }}
-            >
-              <SealLogo size={30} />
-            </motion.div>
-            <motion.span
-              initial={{ clipPath: "inset(0 100% 0 0)" }}
-              animate={{ clipPath: "inset(0 0% 0 0)" }}
-              transition={{ duration: 0.4, delay: 0.1 }}
-              className="flex items-baseline gap-1.5 font-display text-[18px] font-bold text-ink"
-            >
-              Xinjing
-              <span className="font-brush text-[15px] font-normal text-ink-soft">心經</span>
-            </motion.span>
-          </div>
-        ) : (
-          <h1 className="font-display text-[18px] font-bold text-ink">{titleFor(pathname)}</h1>
-        )}
+        <h1 className="flex items-center gap-2.5">
+          <motion.div
+            initial={{ scale: 1.6, rotate: -8 }}
+            animate={{ scale: 1, rotate: -3 }}
+            transition={{ type: "spring", stiffness: 300, damping: 18 }}
+          >
+            <SealLogo size={30} />
+          </motion.div>
+          <motion.span
+            initial={{ clipPath: "inset(0 100% 0 0)" }}
+            animate={{ clipPath: "inset(0 0% 0 0)" }}
+            transition={{ duration: 0.4, delay: 0.1 }}
+            className="flex items-baseline gap-1.5 font-display text-[18px] font-bold text-ink"
+          >
+            Xinjing
+            <span className="font-brush text-[15px] font-normal text-ink-soft">心經</span>
+            {page && (
+              <span className="ml-1 text-[14px] font-semibold text-ink-soft">— {page}</span>
+            )}
+          </motion.span>
+        </h1>
 
         <div className="flex items-center gap-1">
           <ThemeToggle />
