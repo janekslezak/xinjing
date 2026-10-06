@@ -1,8 +1,8 @@
-import { Routes, Route } from 'react-router'
+import { Routes, Route, Navigate } from 'react-router'
 import Layout from './components/Layout'
 import Home from './pages/Home'
 import Copy from './pages/Copy'
-import Chant from './pages/Chant'
+import Recite from './pages/Recite'
 
 export default function App() {
   return (
@@ -10,7 +10,8 @@ export default function App() {
       <Route element={<Layout />}>
         <Route index element={<Home />} />
         <Route path="copy" element={<Copy />} />
-        <Route path="chant" element={<Chant />} />
+        <Route path="recite" element={<Recite />} />
+        <Route path="/chant" element={<Navigate to="/recite" replace />} />
         <Route path="*" element={<Home />} />
       </Route>
     </Routes>

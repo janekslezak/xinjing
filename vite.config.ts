@@ -14,7 +14,7 @@ export default defineConfig({
       manifest: {
         name: "Xinjing 心經 — Heart Sutra Practice",
         short_name: "Xinjing",
-        description: "Copy and chant the Heart Sutra in traditional characters",
+        description: "Practice tool to learn and write the Heart Sutra",
         display: "standalone",
         orientation: "portrait",
         theme_color: "#C8442C",

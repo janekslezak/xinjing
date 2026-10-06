@@ -5,7 +5,7 @@ import Navbar from "./Navbar";
 import Footer from "./Footer";
 import InstallPrompt from "./InstallPrompt";
 
-const TAB_ORDER = ["/", "/copy", "/chant"];
+const TAB_ORDER = ["/", "/copy", "/recite"];
 
 function tabIndex(pathname: string): number {
   const i = TAB_ORDER.findIndex((t) => (t === "/" ? pathname === "/" : pathname.startsWith(t)));

@@ -39,7 +39,7 @@ export function useSpeech(): UseSpeech {
   const supported = typeof window !== "undefined" && "speechSynthesis" in window;
   const voiceRef = useRef<SpeechSynthesisVoice | null>(null);
   // retain the in-flight utterance: Chrome GCs unreferenced utterances,
-  // which silently drops onend and would stall chant play-all
+  // which silently drops onend and would stall recite play-all
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const [hasChineseVoice, setHasChineseVoice] = useState(false);
   const [speaking, setSpeaking] = useState(false);

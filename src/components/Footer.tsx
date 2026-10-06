@@ -5,7 +5,7 @@ import { Home, Brush, AudioLines } from "lucide-react";
 const TABS = [
   { to: "/", label: "Home", icon: Home, end: true },
   { to: "/copy", label: "Copy", icon: Brush, end: false },
-  { to: "/chant", label: "Chant", icon: AudioLines, end: false },
+  { to: "/recite", label: "Recite", icon: AudioLines, end: false },
 ];
 
 /** BOTTOM TAB BAR — 64px + safe-area-bottom, 3 tabs, active vermilion with sliding indicator. */

@@ -6,7 +6,7 @@ import { useAppSettings, updateSettings } from "@/components/settings/settings";
 
 const TITLES: Array<[RegExp, string]> = [
   [/^\/copy/, "Copy"],
-  [/^\/chant/, "Chant"],
+  [/^\/recite/, "Recite"],
 ];
 
 function titleFor(pathname: string): string {
