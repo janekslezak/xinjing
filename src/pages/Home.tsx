@@ -47,7 +47,7 @@ export default function Home() {
         transition={{ duration: 0.35, ease: EASE }}
         className="text-center"
       >
-        <p className="mx-auto max-w-[300px] text-[14px] leading-relaxed text-ink-soft">
+        <p className="mx-auto max-w-[320px] font-display text-[20px] font-semibold leading-snug text-ink">
           Practice tool to learn and write the Heart Sutra
         </p>
       </motion.section>
