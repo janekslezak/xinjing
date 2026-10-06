@@ -555,48 +555,6 @@ export default function Copy() {
         )}
       </div>
 
-      {/* context card */}
-      <div className="rounded-[20px] bg-paper-raised px-5 py-4 shadow-soft">
-        <p className="font-cjk text-[18px] leading-8 text-ink">
-          {renderHighlighted(contextZh, char, occurrence)}
-        </p>
-        <p className="mt-1.5 text-[13px] leading-snug text-ink-soft">{contextEn}</p>
-        {lineIndex === -1 && (
-          <p className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-ink-faint">
-            Sutra title
-          </p>
-        )}
-      </div>
-
-      {/* character details card */}
-      {info && (
-        <div className="overflow-hidden rounded-[20px] bg-paper-raised shadow-soft">
-          <div className="flex items-baseline gap-3 border-b border-grid-line/50 px-5 py-3">
-            <span className="w-16 shrink-0 text-[11px] font-bold uppercase tracking-wide text-ink-faint">
-              Pinyin
-            </span>
-            <span className="text-[15px] font-semibold italic text-wash-blue">{info.pinyin}</span>
-          </div>
-          <div className="flex items-baseline gap-3 border-b border-grid-line/50 px-5 py-3">
-            <span className="w-16 shrink-0 text-[11px] font-bold uppercase tracking-wide text-ink-faint">
-              Meaning
-            </span>
-            <span className="text-[14px] leading-snug text-ink">{info.gloss}</span>
-          </div>
-          <div className="flex items-baseline gap-3 border-b border-grid-line/50 px-5 py-3">
-            <span className="w-16 shrink-0 text-[11px] font-bold uppercase tracking-wide text-ink-faint">
-              Radical
-            </span>
-            <span className="text-[14px] text-ink">
-              <span className="font-cjk">{info.radical}</span> {info.radicalGloss}
-            </span>
-          </div>
-          <div className="px-5 py-3">
-            <p className="text-[13px] leading-snug text-ink-soft">{info.origin}</p>
-          </div>
-        </div>
-      )}
-
       {/* primary controls */}
       <div className="flex items-center justify-center gap-3">
         <button
@@ -654,6 +612,48 @@ export default function Copy() {
           All characters
         </button>
       </div>
+
+      {/* context card */}
+      <div className="rounded-[20px] bg-paper-raised px-5 py-4 shadow-soft">
+        <p className="font-cjk text-[18px] leading-8 text-ink">
+          {renderHighlighted(contextZh, char, occurrence)}
+        </p>
+        <p className="mt-1.5 text-[13px] leading-snug text-ink-soft">{contextEn}</p>
+        {lineIndex === -1 && (
+          <p className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-ink-faint">
+            Sutra title
+          </p>
+        )}
+      </div>
+
+      {/* character details card */}
+      {info && (
+        <div className="overflow-hidden rounded-[20px] bg-paper-raised shadow-soft">
+          <div className="flex items-baseline gap-3 border-b border-grid-line/50 px-5 py-3">
+            <span className="w-16 shrink-0 text-[11px] font-bold uppercase tracking-wide text-ink-faint">
+              Pinyin
+            </span>
+            <span className="text-[15px] font-semibold italic text-wash-blue">{info.pinyin}</span>
+          </div>
+          <div className="flex items-baseline gap-3 border-b border-grid-line/50 px-5 py-3">
+            <span className="w-16 shrink-0 text-[11px] font-bold uppercase tracking-wide text-ink-faint">
+              Meaning
+            </span>
+            <span className="text-[14px] leading-snug text-ink">{info.gloss}</span>
+          </div>
+          <div className="flex items-baseline gap-3 border-b border-grid-line/50 px-5 py-3">
+            <span className="w-16 shrink-0 text-[11px] font-bold uppercase tracking-wide text-ink-faint">
+              Radical
+            </span>
+            <span className="text-[14px] text-ink">
+              <span className="font-cjk">{info.radical}</span> {info.radicalGloss}
+            </span>
+          </div>
+          <div className="px-5 py-3">
+            <p className="text-[13px] leading-snug text-ink-soft">{info.origin}</p>
+          </div>
+        </div>
+      )}
 
       {/* all-characters bottom sheet */}
       <AnimatePresence>
