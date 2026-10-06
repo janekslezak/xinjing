@@ -26,32 +26,12 @@ A standalone PWA — a practice tool to learn and write the **Heart Sutra**
 React 19 · TypeScript · Vite · vite-plugin-pwa (Workbox) · Tailwind CSS ·
 framer-motion · lucide-react · hanzi-writer + hanzi-writer-data · react-router
 
-## Develop
-
-```sh
-npm install
-npm run dev      # dev server on :3000
-npm run build    # type-check + production build (dist/)
-npm run preview  # preview the production build
-```
 
 Stroke-order data (`public/hanzidata/*.json`) is extracted from the
 `hanzi-writer-data` npm package by `scripts/copy-hanzidata.mjs`:
 
-```sh
-node scripts/copy-hanzidata.mjs
-```
-
-App icons are generated from the seal SVG with `scripts/make-icons.py`.
-
-## Deploy
-
-Static SPA — deploy `dist/` to any static host with SPA fallback
-(`public/_redirects` included). This site is powered by
-[Netlify](https://www.netlify.com/).
 
 ## Links
 
-- GitHub: https://github.com/janekslezak/xinjing
-- Code of Conduct: https://github.com/janekslezak/xinjing/blob/main/CODE_OF_CONDUCT.md
+- https://xinjing-rike.netlify.app/
 - Support: https://buycoffee.to/zhishui
