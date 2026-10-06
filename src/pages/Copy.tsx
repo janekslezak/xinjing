@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { ReactNode } from "react";
+import type { ReactNode, TouchEvent as ReactTouchEvent } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import HanziWriter from "hanzi-writer";
 import {
@@ -146,6 +146,7 @@ export default function Copy() {
   const writerRef = useRef<HanziWriter | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   const jumpCancelRef = useRef(false);
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const modeRef = useRef(mode);
   modeRef.current = mode;
 
@@ -311,6 +312,30 @@ export default function Copy() {
     (delta: number) => setIndex((i) => clampIndex(i + delta)),
     []
   );
+
+  // swipe navigation (study mode only — in practice mode the canvas captures
+  // stroke tracing). Handlers are attached only in study mode; the same flags
+  // as the keyboard handler (sheet open / jump input editing) also gate the
+  // gesture. Swipe left → next char, right → previous, matching reading
+  // direction; navigation goes through go()/clampIndex so persistence and
+  // viewed-marking fire exactly as with the buttons.
+  const handleCanvasTouchStart = (e: ReactTouchEvent) => {
+    if (mode !== "study" || sheetOpen || jumpEditing) return;
+    const t = e.touches[0];
+    touchStartRef.current = { x: t.clientX, y: t.clientY };
+  };
+
+  const handleCanvasTouchEnd = (e: ReactTouchEvent) => {
+    const start = touchStartRef.current;
+    touchStartRef.current = null;
+    if (!start || mode !== "study" || sheetOpen || jumpEditing) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - start.x;
+    const dy = t.clientY - start.y;
+    if (Math.abs(dx) >= 48 && Math.abs(dx) > 1.5 * Math.abs(dy)) {
+      go(dx < 0 ? 1 : -1);
+    }
+  };
 
   // keyboard navigation — arrows are disabled while the jump sheet (modal)
   // is open or the jump-to-character input is being edited (its ArrowLeft/
@@ -478,24 +503,49 @@ export default function Copy() {
       {/* canvas */}
       <div className="flex flex-col items-center">
         <div
-          className="relative rounded-[24px] bg-paper-raised shadow-soft"
-          style={{ width: size, height: size }}
+          className="relative rounded-[24px] bg-paper-raised px-5 shadow-soft"
+          onTouchStart={mode === "study" ? handleCanvasTouchStart : undefined}
+          onTouchEnd={mode === "study" ? handleCanvasTouchEnd : undefined}
         >
-          <TianGrid
-            className={`absolute inset-0 h-full w-full transition-opacity duration-200 ${
-              gridOn ? "opacity-60" : "opacity-0"
-            }`}
-          />
-          <div ref={canvasRef} className="absolute inset-0" />
-          {loadState === "error" && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
-              <span className="font-cjk text-ink" style={{ fontSize: size * 0.6, lineHeight: 1 }}>
-                {char}
-              </span>
-              <span className="text-[12px] font-semibold text-ink-faint">
-                Stroke data unavailable
-              </span>
-            </div>
+          <div className="relative" style={{ width: size, height: size }}>
+            <TianGrid
+              className={`absolute inset-0 h-full w-full transition-opacity duration-200 ${
+                gridOn ? "opacity-60" : "opacity-0"
+              }`}
+            />
+            <div ref={canvasRef} className="absolute inset-0" />
+            {loadState === "error" && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+                <span className="font-cjk text-ink" style={{ fontSize: size * 0.6, lineHeight: 1 }}>
+                  {char}
+                </span>
+                <span className="text-[12px] font-semibold text-ink-faint">
+                  Stroke data unavailable
+                </span>
+              </div>
+            )}
+          </div>
+          {mode === "study" && index > 0 && (
+            <motion.span
+              aria-hidden="true"
+              className="pointer-events-none absolute left-1 top-1/2 text-ink-faint/50"
+              style={{ y: "-50%" }}
+              animate={{ x: [0, -4, 0] }}
+              transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+            >
+              <ChevronLeft size={18} />
+            </motion.span>
+          )}
+          {mode === "study" && index < TOTAL_CHARS - 1 && (
+            <motion.span
+              aria-hidden="true"
+              className="pointer-events-none absolute right-1 top-1/2 text-ink-faint/50"
+              style={{ y: "-50%" }}
+              animate={{ x: [0, 4, 0] }}
+              transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+            >
+              <ChevronRight size={18} />
+            </motion.span>
           )}
         </div>
         {fallbackNote && (
