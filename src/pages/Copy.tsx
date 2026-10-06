@@ -9,9 +9,14 @@ import {
   Pause,
   Play,
   RotateCcw,
+  Volume2,
 } from "lucide-react";
 import TianGrid from "@/components/TianGrid";
 import Chip from "@/components/Chip";
+import Toast from "@/components/Toast";
+import { useSpeech } from "@/hooks/useSpeech";
+import { useAppSettings } from "@/components/settings/settings";
+import { CHAR_INFO } from "@/data/charInfo";
 import {
   SUTRA_CHARS,
   SUTRA_LINES,
@@ -23,6 +28,9 @@ import {
 
 const INDEX_KEY = "xinjing:copy-index";
 const VIEWED_KEY = "xinjing:viewed";
+const MASTERED_KEY = "xinjing:mastered";
+const NO_VOICE_MSG =
+  "No Chinese voice found — install a Chinese (Taiwan) voice in system settings";
 
 function cssVar(name: string, fallback: string): string {
   if (typeof window === "undefined") return fallback;
@@ -37,9 +45,9 @@ function loadCharJson(c: string): Promise<any> {
   });
 }
 
-function readViewed(): Set<string> {
+function readCharSet(key: string): Set<string> {
   try {
-    const raw = localStorage.getItem(VIEWED_KEY);
+    const raw = localStorage.getItem(key);
     const arr: unknown = raw ? JSON.parse(raw) : [];
     return new Set(Array.isArray(arr) ? (arr as string[]) : []);
   } catch {
@@ -48,11 +56,24 @@ function readViewed(): Set<string> {
 }
 
 function markViewed(c: string): Set<string> {
-  const set = readViewed();
+  const set = readCharSet(VIEWED_KEY);
   if (!set.has(c)) {
     set.add(c);
     try {
       localStorage.setItem(VIEWED_KEY, JSON.stringify(Array.from(set)));
+    } catch {
+      /* ignore */
+    }
+  }
+  return set;
+}
+
+function markMastered(c: string): Set<string> {
+  const set = readCharSet(MASTERED_KEY);
+  if (!set.has(c)) {
+    set.add(c);
+    try {
+      localStorage.setItem(MASTERED_KEY, JSON.stringify(Array.from(set)));
     } catch {
       /* ignore */
     }
@@ -99,17 +120,22 @@ function renderHighlighted(text: string, char: string, occ: number): ReactNode[]
 }
 
 type LoadState = "loading" | "ready" | "error";
+type CopyMode = "study" | "practice";
 
 export default function Copy() {
   const [index, setIndex] = useState<number>(initialIndex);
+  const [mode, setMode] = useState<CopyMode>("study");
   const [outlineOn, setOutlineOn] = useState(true);
   const [gridOn, setGridOn] = useState(true);
   const [playing, setPlaying] = useState(true);
   const [strokeCount, setStrokeCount] = useState<number | null>(null);
+  const [quizMistakes, setQuizMistakes] = useState(0);
   const [fallbackNote, setFallbackNote] = useState<string | null>(null);
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [viewed, setViewed] = useState<Set<string>>(() => readViewed());
+  const [viewed, setViewed] = useState<Set<string>>(() => readCharSet(VIEWED_KEY));
+  const [mastered, setMastered] = useState<Set<string>>(() => readCharSet(MASTERED_KEY));
+  const [toast, setToast] = useState<string | null>(null);
   const [size, setSize] = useState(() =>
     typeof window === "undefined" ? 320 : Math.min(320, window.innerWidth - 64)
   );
@@ -117,8 +143,15 @@ export default function Copy() {
 
   const writerRef = useRef<HanziWriter | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
+  const modeRef = useRef(mode);
+  modeRef.current = mode;
+
+  const { supported, hasChineseVoice, speak } = useSpeech();
+  const settings = useAppSettings();
+  const speechRate = settings.speechRate ?? 0.85;
 
   const { char, lineIndex } = SUTRA_CHARS[index];
+  const info = CHAR_INFO[char];
 
   // occurrence index of this char within its line (for highlighting)
   const occurrence = useMemo(() => {
@@ -146,7 +179,7 @@ export default function Copy() {
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
-  // create / recreate the writer on character or outline change
+  // create / recreate the writer on character, mode or outline change
   useEffect(() => {
     const el = canvasRef.current;
     if (!el || size <= 0) return;
@@ -213,26 +246,62 @@ export default function Copy() {
     return () => {
       stale = true;
       writerRef.current = null;
-      // cancel the loop's rAF chain BEFORE detaching the SVG, otherwise
-      // loopCharacterAnimation() re-queues frames forever on a dead node
+      // cancel the quiz AND the loop's rAF chain BEFORE detaching the SVG,
+      // otherwise loopCharacterAnimation() re-queues frames forever on a
+      // dead node and an active quiz keeps listening on removed elements
       writer.pauseAnimation();
+      writer.cancelQuiz();
       el.innerHTML = "";
     };
-  }, [char, size, outlineOn]);
+  }, [char, size, outlineOn, mode]);
 
-  // play / pause without recreating the writer
+  // quiz completion: judge only here, from totalMistakes
+  const handleQuizComplete = (totalMistakes: number) => {
+    if (totalMistakes === 0 && !outlineOn) {
+      setMastered(markMastered(char));
+      setToast(`❤ ${char} mastered — flawless!`);
+    } else if (totalMistakes === 0) {
+      setToast(`Flawless! Turn off the outline to master ${char}.`);
+    } else {
+      setToast(
+        `${totalMistakes} ${totalMistakes === 1 ? "mistake" : "mistakes"} — retry ${char} to master it`
+      );
+    }
+  };
+
+  const startQuiz = () => {
+    const w = writerRef.current;
+    if (!w) return;
+    setQuizMistakes(0);
+    w.quiz({
+      onMistake: (d) => setQuizMistakes(d.totalMistakes),
+      onCorrectStroke: () => {},
+      onComplete: (s) => handleQuizComplete(s.totalMistakes),
+    });
+  };
+
+  // mode behaviour without recreating the writer — the writer is recreated
+  // per mode above, so this effect only fires on ready transitions (and on
+  // play/pause toggles in study mode); mode comes from a ref so practice
+  // quizzes are never double-started or started mid-load
   // NOTE: hanzi-writer v3 has no public cancelAnimation() (v2 API); any new
   // same-scope animation cancels the running loop chain internally, so
   // pauseAnimation() + showCharacter() is the equivalent stop-and-show.
   useEffect(() => {
     const w = writerRef.current;
     if (!w || loadState !== "ready") return;
+    if (modeRef.current === "practice") {
+      w.pauseAnimation();
+      startQuiz();
+      return;
+    }
     if (playing) {
       w.loopCharacterAnimation();
     } else {
       w.pauseAnimation();
       w.showCharacter();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playing, loadState]);
 
   const go = useCallback(
@@ -256,13 +325,32 @@ export default function Copy() {
     return () => window.removeEventListener("keydown", onKey);
   }, [go, sheetOpen]);
 
-  const replay = () => {
+  const retry = () => {
     const w = writerRef.current;
+    if (mode === "practice") {
+      // v3 pattern: cancel the active quiz, then start a fresh one
+      if (!w || loadState !== "ready") return;
+      w.cancelQuiz();
+      startQuiz();
+      return;
+    }
     setPlaying(true);
     if (!w || loadState !== "ready") return;
     w.pauseAnimation();
     w.loopCharacterAnimation();
   };
+
+  const pronounce = () => {
+    if (!supported || !hasChineseVoice) {
+      setToast(NO_VOICE_MSG);
+      return;
+    }
+    speak(char, speechRate);
+  };
+
+  // stable dismisser — an inline closure would reset Toast's auto-dismiss
+  // timer on every render
+  const dismissToast = useCallback(() => setToast(null), []);
 
   const jumpTo = (i: number) => {
     setIndex(clampIndex(i));
@@ -278,17 +366,34 @@ export default function Copy() {
 
   return (
     <div className="flex flex-col gap-4 pt-5">
-      {/* header: position + progress bar */}
+      {/* header: position + pronounce + progress bar */}
       <div>
         <div className="flex items-center justify-between">
-          <p className="font-display text-[15px] font-bold text-ink">
-            {index + 1} <span className="text-ink-faint">/ {TOTAL_CHARS}</span>
-          </p>
-          {strokeCount !== null && loadState !== "error" && (
-            <span className="rounded-full border border-grid-line/70 bg-paper-raised px-3 py-1 text-[12px] font-bold text-ink-soft">
-              {strokeCount} strokes
-            </span>
-          )}
+          <div className="flex items-center gap-1">
+            <p className="font-display text-[15px] font-bold text-ink">
+              {index + 1} <span className="text-ink-faint">/ {TOTAL_CHARS}</span>
+            </p>
+            <button
+              type="button"
+              onClick={pronounce}
+              aria-label={`Pronounce ${char}`}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-ink-faint transition-all hover:text-ink active:scale-90"
+            >
+              <Volume2 size={18} />
+            </button>
+          </div>
+          <div className="flex items-center gap-2">
+            {mode === "practice" && loadState === "ready" && (
+              <span className="rounded-full border border-grid-line/70 bg-paper-raised px-3 py-1 text-[12px] font-bold text-vermilion">
+                {quizMistakes} {quizMistakes === 1 ? "mistake" : "mistakes"}
+              </span>
+            )}
+            {strokeCount !== null && loadState !== "error" && (
+              <span className="rounded-full border border-grid-line/70 bg-paper-raised px-3 py-1 text-[12px] font-bold text-ink-soft">
+                {strokeCount} strokes
+              </span>
+            )}
+          </div>
         </div>
         <div className="mt-2 h-1 overflow-hidden rounded-full bg-grid-line/50">
           <motion.div
@@ -298,6 +403,17 @@ export default function Copy() {
             transition={{ duration: 0.25 }}
           />
         </div>
+      </div>
+
+      {/* mode toggle */}
+      <div className="flex items-center justify-center gap-2">
+        <Chip label="Study" selected={mode === "study"} onClick={() => setMode("study")} />
+        <Chip
+          label="Practice"
+          tone="jade"
+          selected={mode === "practice"}
+          onClick={() => setMode("practice")}
+        />
       </div>
 
       {/* canvas */}
@@ -343,6 +459,35 @@ export default function Copy() {
         )}
       </div>
 
+      {/* character details card */}
+      {info && (
+        <div className="overflow-hidden rounded-[20px] bg-paper-raised shadow-soft">
+          <div className="flex items-baseline gap-3 border-b border-grid-line/50 px-5 py-3">
+            <span className="w-16 shrink-0 text-[11px] font-bold uppercase tracking-wide text-ink-faint">
+              Pinyin
+            </span>
+            <span className="text-[15px] font-semibold italic text-wash-blue">{info.pinyin}</span>
+          </div>
+          <div className="flex items-baseline gap-3 border-b border-grid-line/50 px-5 py-3">
+            <span className="w-16 shrink-0 text-[11px] font-bold uppercase tracking-wide text-ink-faint">
+              Meaning
+            </span>
+            <span className="text-[14px] leading-snug text-ink">{info.gloss}</span>
+          </div>
+          <div className="flex items-baseline gap-3 border-b border-grid-line/50 px-5 py-3">
+            <span className="w-16 shrink-0 text-[11px] font-bold uppercase tracking-wide text-ink-faint">
+              Radical
+            </span>
+            <span className="text-[14px] text-ink">
+              <span className="font-cjk">{info.radical}</span> {info.radicalGloss}
+            </span>
+          </div>
+          <div className="px-5 py-3">
+            <p className="text-[13px] leading-snug text-ink-soft">{info.origin}</p>
+          </div>
+        </div>
+      )}
+
       {/* primary controls */}
       <div className="flex items-center justify-center gap-3">
         <button
@@ -354,19 +499,25 @@ export default function Copy() {
         >
           <ChevronLeft size={22} />
         </button>
+        {mode === "study" && (
+          <button
+            type="button"
+            onClick={() => setPlaying((p) => !p)}
+            aria-label={playing ? "Pause animation" : "Play animation"}
+            className="flex h-14 w-14 items-center justify-center rounded-full bg-vermilion text-paper-raised shadow-soft transition-all active:scale-90"
+          >
+            {playing ? <Pause size={22} /> : <Play size={22} className="ml-0.5" />}
+          </button>
+        )}
         <button
           type="button"
-          onClick={() => setPlaying((p) => !p)}
-          aria-label={playing ? "Pause animation" : "Play animation"}
-          className="flex h-14 w-14 items-center justify-center rounded-full bg-vermilion text-paper-raised shadow-soft transition-all active:scale-90"
-        >
-          {playing ? <Pause size={22} /> : <Play size={22} className="ml-0.5" />}
-        </button>
-        <button
-          type="button"
-          onClick={replay}
-          aria-label="Replay stroke animation"
-          className="flex h-12 w-12 items-center justify-center rounded-full bg-paper-raised text-ink shadow-soft transition-all active:scale-90"
+          onClick={retry}
+          aria-label={mode === "practice" ? "Retry quiz" : "Replay stroke animation"}
+          className={`flex items-center justify-center rounded-full shadow-soft transition-all active:scale-90 ${
+            mode === "practice"
+              ? "h-14 w-14 bg-vermilion text-paper-raised"
+              : "h-12 w-12 bg-paper-raised text-ink"
+          }`}
         >
           <RotateCcw size={19} />
         </button>
@@ -447,6 +598,12 @@ export default function Copy() {
                           <span className="relative font-cjk text-[20px] leading-none text-ink">
                             {sc.char}
                           </span>
+                          {mastered.has(sc.char) && (
+                            <span
+                              aria-hidden="true"
+                              className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-jade"
+                            />
+                          )}
                         </button>
                       );
                     })}
@@ -457,6 +614,8 @@ export default function Copy() {
           </div>
         )}
       </AnimatePresence>
+
+      <Toast message={toast} onDismiss={dismissToast} />
     </div>
   );
 }

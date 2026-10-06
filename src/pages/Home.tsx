@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { motion } from "framer-motion";
 import { Brush, AudioLines, ChevronRight } from "lucide-react";
-import SealLogo from "@/components/SealLogo";
 import ProgressRing from "@/components/ProgressRing";
 import {
   SUTRA_LINES,
@@ -14,10 +13,11 @@ import {
 const EASE = [0.22, 1, 0.36, 1] as [number, number, number, number];
 
 const VIEWED_KEY = "xinjing:viewed";
+const MASTERED_KEY = "xinjing:mastered";
 
-function readViewed(): Set<string> {
+function readCharSet(key: string): Set<string> {
   try {
-    const raw = localStorage.getItem(VIEWED_KEY);
+    const raw = localStorage.getItem(key);
     const arr: unknown = raw ? JSON.parse(raw) : [];
     return new Set(Array.isArray(arr) ? (arr as string[]) : []);
   } catch {
@@ -34,16 +34,21 @@ function StatChip({ children }: { children: React.ReactNode }) {
 }
 
 export default function Home() {
-  const [viewed, setViewed] = useState<Set<string>>(() => readViewed());
+  const [viewed, setViewed] = useState<Set<string>>(() => readCharSet(VIEWED_KEY));
+  const [mastered, setMastered] = useState<Set<string>>(() => readCharSet(MASTERED_KEY));
 
   // refresh when returning from /copy (same-tab navigation keeps state)
   useEffect(() => {
-    const onFocus = () => setViewed(readViewed());
+    const onFocus = () => {
+      setViewed(readCharSet(VIEWED_KEY));
+      setMastered(readCharSet(MASTERED_KEY));
+    };
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
   }, []);
 
   const explored = UNIQUE_CHARS.filter((c) => viewed.has(c)).length;
+  const masteredCount = UNIQUE_CHARS.filter((c) => mastered.has(c)).length;
   const progress = explored / UNIQUE_CHARS.length;
 
   return (
@@ -53,15 +58,14 @@ export default function Home() {
         initial={{ y: 16, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.35, ease: EASE }}
-        className="flex flex-col items-center pt-2 text-center"
+        className="flex flex-col items-center pb-2 pt-14 text-center"
       >
-        <SealLogo size={96} className="shadow-lift" />
         <h1 className="mt-4 flex items-baseline gap-2 font-display text-[34px] font-bold leading-none text-ink">
           Xinjing
           <span className="font-brush text-[26px] font-normal text-vermilion">心經</span>
         </h1>
         <p className="mt-2.5 max-w-[300px] text-[14px] leading-relaxed text-ink-soft">
-          Copy and chant the Heart Sutra in traditional characters
+          Practice tool to learn and write the Heart Sutra
         </p>
         <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
           <StatChip>{TOTAL_CHARS} characters</StatChip>
@@ -91,6 +95,9 @@ export default function Home() {
               {explored} / {UNIQUE_CHARS.length}
             </p>
             <p className="mt-0.5 text-[13px] text-ink-soft">characters explored</p>
+            <p className="mt-0.5 text-[12px] text-ink-faint">
+              <span className="font-bold text-jade">{masteredCount}</span> mastered
+            </p>
             <p className="mt-1 text-[12px] text-ink-faint">
               Every unique character you've viewed in Copy practice
             </p>
@@ -126,7 +133,7 @@ export default function Home() {
         </Link>
 
         <Link
-          to="/chant"
+          to="/recite"
           className="group flex items-center gap-4 rounded-[20px] bg-paper-raised p-5 shadow-soft transition-transform active:scale-[0.98]"
         >
           <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-jade/10 text-jade">
@@ -134,11 +141,11 @@ export default function Home() {
           </span>
           <span className="min-w-0 flex-1">
             <span className="flex items-baseline gap-2 font-display text-[18px] font-bold text-ink">
-              Chant
+              Recite
               <span className="font-brush text-[16px] font-normal text-ink-soft">誦讀</span>
             </span>
             <span className="mt-1 block text-[13px] leading-snug text-ink-soft">
-              Listen at your own pace and chant along
+              Listen at your own pace and follow along
             </span>
           </span>
           <ChevronRight size={20} className="shrink-0 text-ink-faint" />
@@ -154,7 +161,7 @@ export default function Home() {
       >
         <p className="font-cjk text-[14px] font-semibold text-ink">{SUTRA_ATTRIBUTION_ZH}</p>
         <p className="mt-1 text-[12px] text-ink-faint">
-          Xuanzang's translation — 260 characters of perfect wisdom.
+          Xuanzang's translation — 260 characters in traditional characters.
         </p>
       </motion.section>
     </div>
